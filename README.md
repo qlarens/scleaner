@@ -2,7 +2,7 @@
 
 [![Release](https://img.shields.io/github/v/release/qlarens/scleaner?style=for-the-badge&label=release)](https://github.com/qlarens/scleaner/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/qlarens/scleaner/total?style=for-the-badge)](https://github.com/qlarens/scleaner/releases)
-[![License](https://img.shields.io/github/license/qlarens/scleaner?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/license-CC%20BY--NC--ND%204.0-lightgrey?style=for-the-badge)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](pyproject.toml)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11_x64-0078D4?style=for-the-badge)](https://github.com/qlarens/scleaner/releases)
 
