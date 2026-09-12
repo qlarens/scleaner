@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scleaner"
+version = "1.2.0"
+authors = [{name = "qlarens"}]
+description = "A deliberate, transparent Windows cleanup utility"
+requires-python = ">=3.11"
+dependencies = ["PySide6-Essentials>=6.8,<7", "psutil>=6,<8", "cryptography>=50.0.1,<51"]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.11,<7"]
+
+[project.gui-scripts]
+scleaner = "scleaner.app:main"
+
+[tool.setuptools.packages.find]
+include = ["scleaner", "scleaner.*"]
+
+[tool.setuptools.package-data]
+scleaner = ["assets/*.svg"]
