@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](pyproject.toml)
 [![Windows](https://img.shields.io/badge/Windows-10%2F11_x64-0078D4?style=for-the-badge)](https://github.com/qlarens/scleaner/releases)
 
-**SCleaner 1.2.0 · by qlarens** — очистка Windows с русским интерфейсом на Python + PySide6. Работает локально, без телеметрии. [Изменения 1.2.0](RELEASE_NOTES_1.2.0.md) · [Сообщить об ошибке](https://github.com/qlarens/scleaner/issues).
+**SCleaner 1.2.0 · by qlarens** — очистка Windows с русским интерфейсом на Python + PySide6. Работает локально, без телеметрии. [Сообщить об ошибке](https://github.com/qlarens/scleaner/issues).
 
 ## Установка и использование
 
