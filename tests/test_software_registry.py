@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from scleaner.catalog import Catalog
 from scleaner.engine import Engine
-from scleaner.registry import RegistryCleaner, UNINSTALL
+from scleaner.registry import SEALS, RegistryCleaner, UNINSTALL
 from scleaner.software_registry import SoftwareRegistry, RegistryRemovalError, name_matches, tree_digest
 from scleaner.storage import Storage
 
@@ -30,9 +30,11 @@ class MemoryRegistry:
     HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE = 1, 2
     KEY_READ, KEY_WRITE = 1, 2
     KEY_WOW64_64KEY, KEY_WOW64_32KEY = 256, 512
+    REG_SZ = 1
 
     def __init__(self):
         self.keys, self.denied = {}, set()
+        self.seals = {}  # Kept apart so tree snapshots compare only application keys.
         self.before_delete = None
         for hive in (1, 2):
             for view in (256, 512):
@@ -52,6 +54,8 @@ class MemoryRegistry:
 
     def OpenKey(self, hive, path, reserved=0, access=1):
         target = self.resolve(hive, path, access)
+        if path == SEALS:
+            return Key(*target)
         if target in self.denied:
             raise PermissionError("denied")
         if target not in self.keys:
@@ -81,11 +85,20 @@ class MemoryRegistry:
 
     def CreateKeyEx(self, hive, path, reserved=0, access=2):
         target = self.resolve(hive, path, access)
-        self.keys.setdefault(target, [])
+        if path != SEALS:
+            self.keys.setdefault(target, [])
         return Key(*target)
 
     def SetValueEx(self, key, name, reserved, kind, data):
-        self.keys[key.hive, key.path, key.view].append([name, data, kind])
+        if key.path == SEALS:
+            self.seals[name] = (data, kind)
+        else:
+            self.keys[key.hive, key.path, key.view].append([name, data, kind])
+
+    def QueryValueEx(self, key, name):
+        if name not in self.seals:
+            raise FileNotFoundError(name)
+        return self.seals[name]
 
 
 class SoftwareRegistryTest(unittest.TestCase):
@@ -270,6 +283,9 @@ class SoftwareRegistryTest(unittest.TestCase):
         data["tree"][r"..\Escape"] = []
         data["digest"] = tree_digest(data["tree"])
         self.storage.write_json(Path(backup), data)
+        with self.assertRaisesRegex(ValueError, "изменена"):
+            self.cleaner.restore(backup)
+        self.cleaner.seal(Path(backup), data)  # Even a sealed backup cannot escape its key.
         with self.assertRaisesRegex(ValueError, "путь"):
             self.cleaner.restore(backup)
 

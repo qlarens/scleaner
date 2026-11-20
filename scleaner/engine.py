@@ -6,14 +6,13 @@ import fnmatch
 import json
 import os
 from pathlib import Path
-import stat
 import threading
 import time
 
 from .catalog import Catalog, PROTECTED_FOLDERS
 from .models import CleanResult, Finding, ScanResult
 from .registry import RegistryCleaner
-from .safety import absolute, allowed, excluded, fingerprint, has_link_ancestor, is_link, running_processes, within
+from .safety import absolute, allowed, delete_file, excluded, fingerprint, has_link_ancestor, is_link, running_processes, within
 from .storage import Storage
 
 MAX_FINDINGS = 250_000
@@ -168,10 +167,7 @@ class Engine:
                                     processes, process_time = self.process_provider(), time.monotonic()
                                 if target.processes and (processes is None or processes.intersection(target.processes)):
                                     raise ValueError("Приложение запущено; закройте его и повторите сканирование")
-                                info = path.lstat()
-                                if not stat.S_ISREG(info.st_mode) or info.st_nlink > 1:
-                                    raise ValueError("Это не обычный файл")
-                                path.unlink()
+                                delete_file(path, root, item.stamp)
                                 result.freed += item.size
                             elif item.kind == "directory":
                                 if root not in empty_roots or path.parent != root or path.name.casefold() in PROTECTED_FOLDERS:

@@ -299,16 +299,33 @@ class EngineTest(unittest.TestCase):
     def test_locked_file_does_not_block_remaining_cleanup(self):
         locked = self.file("Temp/locked.tmp")
         good = self.file("Temp/good.tmp")
-        unlink = Path.unlink
-        def guard(path, *args, **kwargs):
-            if path == locked:
-                raise PermissionError("used by another process")
-            return unlink(path, *args, **kwargs)
-        with patch.object(Path, "unlink", guard):
-            result = self.engine.clean(self.scan(["temp"]).findings, self.settings)
+        findings = self.scan(["temp"]).findings
+        with locked.open("rb"):  # The CRT opens without FILE_SHARE_DELETE.
+            result = self.engine.clean(findings, self.settings)
         self.assertEqual((result.removed, result.skipped), (1, 1))
         self.assertTrue(locked.exists())
         self.assertFalse(good.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows junction test")
+    def test_junction_swapped_in_after_checks_cannot_redirect_deletion(self):
+        precious = self.file("Documents/precious.tmp")
+        decoy = self.file("Temp/sub/precious.tmp")
+        finding = self.scan(["temp"]).findings[0]
+        self.assertEqual(Path(finding.path), decoy)
+        decoy.unlink()
+        decoy.parent.rmdir()
+        result = subprocess.run(["cmd.exe", "/c", "mklink", "/J", str(decoy.parent), str(precious.parent)], capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        try:
+            # Worst case: the swap lands after every path check and the stamp matches the target.
+            forged = replace(finding, stamp=fingerprint(precious))
+            with patch("scleaner.engine.allowed", return_value=True):
+                clean = self.engine.clean([forged], self.settings)
+            self.assertEqual((clean.removed, clean.skipped), (0, 1))
+            self.assertIn("вне разрешённой папки", clean.errors[0])
+            self.assertTrue(precious.exists())
+        finally:
+            decoy.parent.rmdir()  # Removes the junction only.
 
     def test_large_file_analysis_is_read_only(self):
         file = self.file("Documents/big.bin")

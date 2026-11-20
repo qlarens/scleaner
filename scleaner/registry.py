@@ -12,6 +12,12 @@ from .models import Finding
 from .safety import has_link_ancestor, within
 
 UNINSTALL = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+# Backups live in user-writable LOCALAPPDATA; their hashes live where only admins can write.
+SEALS = r"SOFTWARE\SCleaner\Backups"
+
+
+def seal_digest(backup: dict) -> str:
+    return hashlib.sha256(json.dumps(backup, sort_keys=True, ensure_ascii=True).encode("ascii")).hexdigest()
 
 
 def executable(command: str) -> str | None:
@@ -184,6 +190,7 @@ class RegistryCleaner:
         base = self.storage.root / "backups" / session / item.id
         backup = {**item.registry, "values": values, "label": item.label}
         self.storage.write_json(base.with_suffix(".json"), backup)
+        self.seal(base.with_suffix(".json"), backup)
         base.with_suffix(".reg").write_text(reg_text(item.registry["hive"], key_name, values), encoding="utf-16")
         # Re-read after backup; DeleteKeyEx never recursively removes unexpected children.
         with w.OpenKey(hive, key_name, 0, w.KEY_READ | mask) as key:
@@ -192,6 +199,24 @@ class RegistryCleaner:
         w.DeleteKeyEx(hive, key_name, mask, 0)
         return str(base.with_suffix(".json"))
 
+    def _seal_name(self, path: Path) -> str:
+        return path.relative_to(self.storage.root / "backups").as_posix()
+
+    def seal(self, path: Path, backup: dict):
+        """Record the backup hash in HKLM before any deletion; unelevated code cannot forge it."""
+        w = self.api
+        with w.CreateKeyEx(w.HKEY_LOCAL_MACHINE, SEALS, 0, w.KEY_WRITE | w.KEY_WOW64_64KEY) as key:
+            w.SetValueEx(key, self._seal_name(path), 0, w.REG_SZ, seal_digest(backup))
+
+    def sealed(self, path: Path) -> str | None:
+        w = self.api
+        try:
+            with w.OpenKey(w.HKEY_LOCAL_MACHINE, SEALS, 0, w.KEY_READ | w.KEY_WOW64_64KEY) as key:
+                value, kind = w.QueryValueEx(key, self._seal_name(path))
+        except (FileNotFoundError, ValueError):
+            return None
+        return value if kind == w.REG_SZ else None
+
     def restore(self, backup_path: str):
         if self.api is None:
             raise ValueError("Реестр недоступен")
@@ -199,6 +224,8 @@ class RegistryCleaner:
         if not within(path, self.storage.root / "backups") or has_link_ancestor(path):
             raise ValueError("Резервная копия должна находиться в папке SCleaner")
         backup = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(backup, dict) or self.sealed(path) != seal_digest(backup):
+            raise ValueError("Резервная копия изменена или создана не SCleaner. Её можно импортировать вручную из файла .reg.")
         if backup.get("kind") == "software":
             from .software_registry import SoftwareRegistry
             return SoftwareRegistry(self).restore(backup)

@@ -26,6 +26,7 @@ class FakeRegistry:
     KEY_WOW64_32KEY = 512
     KEY_READ = 1
     KEY_WRITE = 2
+    REG_SZ = 1
 
     def __init__(self, values):
         self.keys = {UNINSTALL + "\\OldApp": values}
@@ -48,11 +49,17 @@ class FakeRegistry:
         del self.keys[name]
 
     def CreateKeyEx(self, hive, name, *args):
-        self.keys[name] = []
+        self.keys.setdefault(name, [])
         return Key(self, name)
 
     def SetValueEx(self, key, name, reserved, kind, data):
         self.keys[key.name].append([name, data, kind])
+
+    def QueryValueEx(self, key, name):
+        matches = [(data, kind) for n, data, kind in self.keys[key.name] if n == name]
+        if not matches:
+            raise FileNotFoundError(name)
+        return matches[-1]
 
 
 class RegistryTest(unittest.TestCase):
@@ -84,6 +91,17 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(self.registry.api.keys[self.item.registry["key"]], self.values)
         with self.assertRaisesRegex(ValueError, "уже существует"):
             self.registry.restore(backup)
+
+    def test_forged_backup_in_user_folder_is_not_restored(self):
+        with patch("scleaner.registry.definitely_missing", return_value=True):
+            backup = Path(self.registry.remove(self.item, "test-session"))
+        data = json.loads(backup.read_text(encoding="utf-8"))
+        data["values"].append(["UninstallString", "C:\\evil.exe", 1])
+        data["digest"] = digest(data["values"])  # An unelevated process can recompute this.
+        backup.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "изменена"):
+            self.registry.restore(str(backup))
+        self.assertNotIn(self.item.registry["key"], self.registry.api.keys)
 
     def test_changed_record_is_not_deleted(self):
         self.registry.api.keys[self.item.registry["key"]].append(["New", "value", 1])

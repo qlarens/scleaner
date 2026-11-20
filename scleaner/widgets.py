@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComb
     QFrame, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMenu, QPushButton, QTableView, QVBoxLayout, QWidget)
 
 from .catalog import CATEGORIES
+from .safety import windows_directory
 from .models import size_text
 
 PATHS = {
@@ -291,7 +292,8 @@ class FindingsTable(QWidget):
 def reveal(path):
     path = Path(path)
     if os.name == "nt":
-        subprocess.Popen(["explorer.exe", "/select,", str(path)])
+        # Full path: a bare name is searched in the exe folder first (e.g. Downloads).
+        subprocess.Popen([str(windows_directory() / "explorer.exe"), "/select,", str(path)])
     else:
         from PySide6.QtCore import QUrl
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))

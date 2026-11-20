@@ -27,6 +27,7 @@ PROTECTED = frozenset(name.casefold() for name in (
     "Intel", "Intel Corporation", "AMD", "ATI", "ATI Technologies", "NVIDIA Corporation",
     "Realtek", "ASIO", "Khronos", "OpenGL", "Vulkan", "Waves", "Dolby", "Synaptics",
     "DefaultUserEnvironment", "OEM", "Partner", "SyncIntegrationClients", "MSI", "AGEIA Technologies",
+    "SCleaner",  # Holds backup hashes; never offered as a leftover.
 ))
 DIRECTORIES = {"installlocation", "installdir", "installpath", "installationdirectory", "installationpath", "installdirectory", "installfolder", "applicationdirectory", "applicationfolder", "appdir", "programdir", "programdirectory"}
 EXECUTABLES = {"executable", "executablepath", "applicationpath", "apppath", "exe", "exepath", "uninstallstring", "quietuninstallstring", "launchcommand", "commandline"}
@@ -490,6 +491,7 @@ class SoftwareRegistry:
             name = export_path + ("\\" + relative if relative else "")
             text += reg_text("HKEY_LOCAL_MACHINE", name, values).split("\r\n", 2)[2] + "\r\n"
         self.storage.write_json(base.with_suffix(".json"), backup)
+        self.cleaner.seal(base.with_suffix(".json"), backup)
         base.with_suffix(".reg").write_text(text, encoding="utf-16")
         backup_path = str(base.with_suffix(".json"))
         try:
