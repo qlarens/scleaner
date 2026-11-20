@@ -16,9 +16,9 @@ if native:
     environment.pop("QT_QPA_PLATFORM", None)
 environment.pop("PYTHONPATH", None)
 environment.pop("PYTHONHOME", None)
-exe = root / "dist" / "SCleaner" / "SCleaner.exe"
+exe = root / "build" / "SCleaner.exe"
 subprocess.run([str(exe), "--screenshot", str(screenshot), "--data-dir", str(artifacts / "release-preview-data")],
-    cwd=artifacts, env=environment, check=True, timeout=20)
+    cwd=artifacts, env=environment, check=True, timeout=60)  # onefile unpacks to %TEMP% first
 if not screenshot.is_file() or screenshot.stat().st_size < 10000:
     raise RuntimeError("The packaged app did not render its window")
 print(f"Packaged executable started and rendered: {screenshot}")

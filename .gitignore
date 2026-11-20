@@ -1,9 +1,35 @@
+# Python
 .venv/
+venv/
 __pycache__/
-*.pyc
+*.py[cod]
 *.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build output
 build/
 dist/
-.pytest_cache/
 artifacts/
+
+# Secrets and local test data
+.env
+.env.*
+*.pem
+*.key
+*.sclicense
+*.sqlite3
+
+# Logs
+*.log
+
+# Editors and tools
+.vscode/
+.idea/
+.codex/
+.claude/settings.local.json
+
+# Windows
 desktop.ini
+Thumbs.db

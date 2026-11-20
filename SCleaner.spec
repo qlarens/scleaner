@@ -1,4 +1,4 @@
-# Run: .venv\Scripts\python.exe -m PyInstaller --noconfirm SCleaner.spec
+# Run via build.ps1: one-file build\SCleaner.exe.
 from pathlib import Path
 import runpy
 from PyInstaller.utils.hooks import collect_data_files
@@ -31,7 +31,7 @@ a = Analysis(
 # incompatible ICU (e.g. from Poppler). Never ship that in place of system ICU.
 a.binaries = [entry for entry in a.binaries if Path(entry[0]).name.casefold() not in ('icuuc.dll', 'icuin.dll') and not Path(entry[0]).name.casefold().startswith('icudt')]
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='SCleaner',
+exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='SCleaner',
     debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
     console=False, disable_windowed_traceback=False, icon=str(root / 'artifacts' / 'SCleaner.ico'),
     # Interactive startup requests UAC through elevation.py. Read-only screenshots
@@ -39,4 +39,3 @@ exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='SCleaner',
     uac_admin=False,
     version=version_info,
 )
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='SCleaner')
